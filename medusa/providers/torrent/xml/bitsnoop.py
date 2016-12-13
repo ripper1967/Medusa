@@ -22,8 +22,6 @@ import datetime
 
 import traceback
 
-from dateutil import parser
-
 from pytimeparse import parse
 
 from requests.compat import urljoin
@@ -141,8 +139,7 @@ class BitSnoopProvider(TorrentProvider):
                     torrent_size = element.size.text
                     size = convert_size(torrent_size) or -1
 
-                    pubdate = parser.parse(element.find('pubDate').text, fuzzy=True) \
-                        if element.find('pubDate') else None
+                    pubdate = self._parse_pubdate(element.find('pubDate').text) if element.find('pubDate') else None
                     if not pubdate:
                         pubdate_raw = element.find("description").text.split(". Added")[1][:-4]
                         if pubdate_raw != "long":  # If it's not "Added long ago"
