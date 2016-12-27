@@ -136,12 +136,12 @@
                 <span style="display: none;">${curShow.name}</span>
                 <div class="imgbanner banner">
                     <a href="home/displayShow?show=${curShow.indexerid}">
-                    <img src="showPoster/?show=${curShow.indexerid}&amp;which=banner" class="banner" alt="${curShow.indexerid}" title="${curShow.name}"/>
+                    <img asset="show/${curShow.indexerid}?type=banner" class="banner" alt="${curShow.indexerid}" title="${curShow.name}"/>
                 </div>
             </td>
             <td align="center">
             % if curShow.network:
-                <span title="${curShow.network}" class="hidden-print"><img id="network" width="54" height="27" src="showPoster/?show=${curShow.indexerid}&amp;which=network" alt="${curShow.network}" title="${curShow.network}" /></span>
+                <span title="${curShow.network}" class="hidden-print"><img id="network" width="54" height="27" asset="show/${curShow.indexerid}?type=network" alt="${curShow.network}" title="${curShow.network}" /></span>
                 <span class="visible-print-inline">${curShow.network}</span>
             % else:
                 <span title="No Network" class="hidden-print"><img id="network" width="54" height="27" src="images/network/nonetwork.png" alt="No Network" title="No Network" /></span>

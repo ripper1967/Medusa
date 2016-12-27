@@ -82,12 +82,10 @@
                 <div class="background-image">
                     <img src="images/poster-back-dark.png"/>
                 </div>
-
                 <div class="poster-overlay">
-                    <a href="home/displayShow?show=${curShow.indexerid}"><img alt="" class="show-image" src="showPoster/?show=${curShow.indexerid}&amp;which=poster_thumb" /></a>
+                    <a href="home/displayShow?show=${curShow.indexerid}"><img alt="" class="show-image" asset="show/${curShow.indexerid}?type=posterThumb"/></a>
                 </div>
             </div>
-
             <div class="progressbar hidden-print" style="position:relative;" data-show-id="${curShow.indexerid}" data-progress-percentage="${progressbar_percent}"></div>
             <div class="show-title">
                 ${curShow.name}
@@ -124,7 +122,7 @@
                         </td>
                         <td class="show-table">
                             % if curShow.network:
-                                <span title="${curShow.network}"><img class="show-network-image" src="showPoster/?show=${curShow.indexerid}&amp;which=network" alt="${curShow.network}" title="${curShow.network}" /></span>
+                                <span title="${curShow.network}"><img class="show-network-image" asset="show/${curShow.indexerid}?type=network" alt="${curShow.network}" title="${curShow.network}" /></span>
                             % else:
                                 <span title="No Network"><img class="show-network-image" src="images/network/nonetwork.png" alt="No Network" title="No Network" /></span>
                             % endif

@@ -135,14 +135,14 @@
             <td class="tvShow">
                 <div class="imgsmallposter small">
                     <a href="home/displayShow?show=${curShow.indexerid}" title="${curShow.name}">
-                        <img src="showPoster/?show=${curShow.indexerid}&amp;which=poster_thumb" class="small" alt="${curShow.indexerid}"/>
+                        <img src="show/${curShow.indexerid}?type=posterThumb" class="small" alt="${curShow.indexerid}"/>
                     </a>
                     <a href="home/displayShow?show=${curShow.indexerid}" style="vertical-align: middle;">${curShow.name}</a>
                 </div>
             </td>
             <td align="center">
             % if curShow.network:
-                <span title="${curShow.network}" class="hidden-print"><img id="network" width="54" height="27" src="showPoster/?show=${curShow.indexerid}&amp;which=network" alt="${curShow.network}" title="${curShow.network}" /></span>
+                <span title="${curShow.network}" class="hidden-print"><img id="network" width="54" height="27" asset="show/${curShow.indexerid}?type=network" alt="${curShow.network}" title="${curShow.network}" /></span>
                 <span class="visible-print-inline">${curShow.network}</span>
             % else:
                 <span title="No Network" class="hidden-print"><img id="network" width="54" height="27" src="images/network/nonetwork.png" alt="No Network" title="No Network" /></span>
