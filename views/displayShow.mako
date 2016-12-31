@@ -164,7 +164,7 @@
                     <th class="col-ep">Scene</th>
                     <th class="col-ep">Scene Absolute</th>
                     <th class="col-name hidden-xs">Name</th>
-                    <th class="col-name">File Name</th>
+                    <th class="col-name hidden-xs">File Name</th>
                     <th class="col-ep">Size</th>
                     <th class="col-airdate">Airdate</th>
                     <th class="col-ep">Download</th>
@@ -206,7 +206,7 @@
                     <th class="col-ep">Scene</th>
                     <th class="col-ep">Scene Absolute</th>
                     <th class="col-name hidden-xs">Name</th>
-                    <th class="col-name">File Name</th>
+                    <th class="col-name hidden-xs">File Name</th>
                     <th class="col-ep">Size</th>
                     <th class="col-airdate">Airdate</th>
                     <th class="col-ep">Download</th>
