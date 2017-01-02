@@ -59,7 +59,7 @@ from .helper.externals import get_externals
 from .indexers.indexer_api import indexerApi
 from .indexers.indexer_config import INDEXER_TVDBV2, INDEXER_TVRAGE, indexerConfig, mappings, reverse_mappings
 from .indexers.indexer_exceptions import (IndexerAttributeNotFound, IndexerEpisodeNotFound, IndexerError,
-                                          IndexerSeasonNotFound)
+                                          IndexerException, IndexerSeasonNotFound)
 from .name_parser.parser import InvalidNameException, InvalidShowException, NameParser
 from .sbdatetime import sbdatetime
 from .scene_exceptions import get_scene_exceptions
@@ -295,8 +295,8 @@ class TVShow(TVObject):
     @property
     def current_qualities(self):
         """Current qualities."""
-        allowed_qualities, preferred_qualities = Quality.splitQuality(int(self.quality))
-        return (allowed_qualities, preferred_qualities)
+        allowed_qualities, preferred_qualities = Quality.split_quality(int(self.quality))
+        return allowed_qualities, preferred_qualities
 
     @property
     def using_preset_quality(self):
@@ -713,7 +713,7 @@ class TVShow(TVObject):
                    (id=self.indexerid, location=self.location), logger.DEBUG)
 
         # get file list
-        media_files = helpers.listMediaFiles(self.location)
+        media_files = helpers.list_media_files(self.location)
         logger.log(u'{id}: Found files: {media_files}'.format
                    (id=self.indexerid, media_files=media_files), logger.DEBUG)
 
@@ -874,27 +874,27 @@ class TVShow(TVObject):
         :return:
         :rtype: dict(int -> dict(int -> bool))
         """
-        if tvapi:
-            t = tvapi
-            show_obj = t[self.indexerid]
-        else:
-            indexer_api_params = indexerApi(self.indexer).api_params.copy()
+        try:
+            if tvapi:
+                t = tvapi
+                show_obj = t[self.indexerid]
+            else:
+                indexer_api_params = indexerApi(self.indexer).api_params.copy()
 
-            indexer_api_params['cache'] = False
+                indexer_api_params['cache'] = False
 
-            if self.lang:
-                indexer_api_params['language'] = self.lang
+                if self.lang:
+                    indexer_api_params['language'] = self.lang
 
-            if self.dvdorder != 0:
-                indexer_api_params['dvdorder'] = True
+                if self.dvdorder != 0:
+                    indexer_api_params['dvdorder'] = True
 
-            try:
-                t = indexerApi(self.indexer).indexer(**indexer_api_params)
-                show_obj = t.get_episodes_for_season(self.indexerid, specials=False, aired_season=seasons)
-            except IndexerError:
-                logger.log(u'{id}: {indexer} timed out, unable to update episodes'.format
-                           (id=self.indexerid, indexer=indexerApi(self.indexer).name), logger.WARNING)
-                return None
+                    t = indexerApi(self.indexer).indexer(**indexer_api_params)
+                    show_obj = t.get_episodes_for_season(self.indexerid, specials=False, aired_season=seasons)
+        except IndexerException as e:
+            logger.log(u'{id}: {indexer} error, unable to update episodes. Message: {ex}'.format
+                       (id=self.indexerid, indexer=indexerApi(self.indexer).name, ex=e), logger.WARNING)
+            raise
 
         logger.log(u'{id}: Loading all episodes from {indexer}'.format
                    (id=self.indexerid, indexer=indexerApi(self.indexer).name), logger.DEBUG)
@@ -1089,18 +1089,18 @@ class TVShow(TVObject):
             # if they replace a file on me I'll make some attempt at re-checking the
             # quality unless I know it's the same file
             if check_quality_again and not same_file:
-                new_quality = Quality.nameQuality(filepath, self.is_anime)
+                new_quality = Quality.name_quality(filepath, self.is_anime)
                 logger.log(u'{0}: Since this file has been renamed, I checked {1} and found quality {2}'.format
                            (self.indexerid, filepath, Quality.qualityStrings[new_quality]), logger.DEBUG)
                 if new_quality != Quality.UNKNOWN:
                     with cur_ep.lock:
-                        cur_ep.status = Quality.compositeStatus(DOWNLOADED, new_quality)
+                        cur_ep.status = Quality.composite_status(DOWNLOADED, new_quality)
 
             # check for status/quality changes as long as it's a new file
-            elif not same_file and helpers.isMediaFile(filepath) and (
+            elif not same_file and helpers.is_media_file(filepath) and (
                     cur_ep.status not in Quality.DOWNLOADED + Quality.ARCHIVED + [IGNORED]):
-                old_status, old_quality = Quality.splitCompositeStatus(cur_ep.status)
-                new_quality = Quality.nameQuality(filepath, self.is_anime)
+                old_status, old_quality = Quality.split_composite_status(cur_ep.status)
+                new_quality = Quality.name_quality(filepath, self.is_anime)
                 new_status = None
 
                 # if it was snatched and now exists then set the status correctly
@@ -1126,7 +1126,7 @@ class TVShow(TVObject):
                 if new_status is not None:
                     with cur_ep.lock:
                         old_ep_status = cur_ep.status
-                        cur_ep.status = Quality.compositeStatus(new_status, new_quality)
+                        cur_ep.status = Quality.composite_status(new_status, new_quality)
                         logger.log(u'{0}: We have an associated file, '
                                    u'so setting the status from {1} to DOWNLOADED/{2}'.format
                                    (self.indexerid, old_ep_status, cur_ep.status), logger.DEBUG)
@@ -1250,6 +1250,7 @@ class TVShow(TVObject):
             if self.dvdorder != 0:
                 indexer_api_params['dvdorder'] = True
 
+            # TODO: Add exception handling.
             t = indexerApi(self.indexer).indexer(**indexer_api_params)
 
         indexed_show = t[self.indexerid]
@@ -1538,8 +1539,8 @@ class TVShow(TVObject):
                         if cur_ep.location and cur_ep.status in Quality.DOWNLOADED:
 
                             if app.EP_DEFAULT_DELETED_STATUS == ARCHIVED:
-                                _, old_quality = Quality.splitCompositeStatus(cur_ep.status)
-                                new_status = Quality.compositeStatus(ARCHIVED, old_quality)
+                                _, old_quality = Quality.split_composite_status(cur_ep.status)
+                                new_status = Quality.composite_status(ARCHIVED, old_quality)
                             else:
                                 new_status = app.EP_DEFAULT_DELETED_STATUS
 
@@ -1814,13 +1815,13 @@ class TVShow(TVObject):
 
     def get_allowed_qualities(self):
         """Return allowed qualities."""
-        allowed = Quality.splitQuality(self.quality)[0]
+        allowed = Quality.split_quality(self.quality)[0]
 
         return [Quality.qualityStrings[v] for v in allowed]
 
     def get_preferred_qualities(self):
         """Return preferred qualities."""
-        preferred = Quality.splitQuality(self.quality)[1]
+        preferred = Quality.split_quality(self.quality)[1]
 
         return [Quality.qualityStrings[v] for v in preferred]
 
@@ -1880,7 +1881,7 @@ class TVShow(TVObject):
         ep_status = int(sql_results[0][b'status'])
         ep_status_text = statusStrings[ep_status]
         manually_searched = sql_results[0][b'manually_searched']
-        _, cur_quality = Quality.splitCompositeStatus(ep_status)
+        _, cur_quality = Quality.split_composite_status(ep_status)
 
         # if it's one of these then we want it as long as it's in our allowed initial qualities
         if ep_status == WANTED:
@@ -2455,11 +2456,11 @@ class TVEpisode(TVObject):
                             ep=episode_num(season, episode), status=statusStrings[self.status].upper()), logger.DEBUG)
 
         # if we have a media file then it's downloaded
-        elif helpers.isMediaFile(self.location):
+        elif helpers.is_media_file(self.location):
             # leave propers alone, you have to either post-process them or manually change them back
             if self.status not in Quality.SNATCHED_PROPER + Quality.DOWNLOADED + Quality.SNATCHED + Quality.ARCHIVED:
                 old_status = self.status
-                self.status = Quality.statusFromName(self.location, anime=self.show.is_anime)
+                self.status = Quality.status_from_name(self.location, anime=self.show.is_anime)
                 logger.log(u"{id}: {show} {ep} status changed from '{old_status}' to '{new_status}'".format
                            (id=self.show.indexerid, show=self.show.name, ep=episode_num(season, episode),
                             old_status=old_status, new_status=self.status), logger.DEBUG)
@@ -2490,8 +2491,8 @@ class TVEpisode(TVObject):
 
         if self.location != '':
 
-            if self.status == UNKNOWN and helpers.isMediaFile(self.location):
-                self.status = Quality.statusFromName(self.location, anime=self.show.is_anime)
+            if self.status == UNKNOWN and helpers.is_media_file(self.location):
+                self.status = Quality.status_from_name(self.location, anime=self.show.is_anime)
                 logger.log(u"{id}: {show} {ep} status changed from 'UNKNOWN' to '{new_status}'".format
                            (id=self.show.indexerid, show=self.show.name, ep=episode_num(self.season, self.episode),
                             new_status=self.status), logger.DEBUG)
@@ -2602,7 +2603,7 @@ class TVEpisode(TVObject):
             ('hasNfo', self.hasnfo),
             ('hasTbn', self.hastbn),
             ('subtitles', self.subtitles),
-            ('status', statusStrings[Quality.splitCompositeStatus(self.status).status]),
+            ('status', statusStrings[Quality.split_composite_status(self.status).status]),
             ('releaseName', self.release_name),
             ('isProper', self.is_proper),
             ('version', self.version),
@@ -2928,7 +2929,7 @@ class TVEpisode(TVObject):
         ep_name = self.__ep_name()
 
         def dot(name):
-            return helpers.sanitizeSceneName(name)
+            return helpers.sanitize_scene_name(name)
 
         def us(name):
             return re.sub('[ -]', '_', name)
@@ -2954,7 +2955,7 @@ class TVEpisode(TVObject):
                 return ''
             return parse_result.release_group.strip('.- []{}')
 
-        _, ep_qual = Quality.splitCompositeStatus(self.status)  # @UnusedVariable
+        _, ep_qual = Quality.split_composite_status(self.status)  # @UnusedVariable
 
         if app.NAMING_STRIP_YEAR:
             show_name = re.sub(r'\(\d+\)$', '', self.show.name).rstrip()
@@ -2989,7 +2990,7 @@ class TVEpisode(TVObject):
             relgrp = app.UNKNOWN_RELEASE_GROUP
 
         # try to get the release encoder to comply with scene naming standards
-        encoder = Quality.sceneQualityFromName(self.release_name.replace(rel_grp[relgrp], ''), ep_qual)
+        encoder = Quality.scene_quality_from_name(self.release_name.replace(rel_grp[relgrp], ''), ep_qual)
         if encoder:
             logger.log(u'Found codec for {show} {ep}'.format(show=show_name, ep=ep_name), logger.DEBUG)
 
@@ -3418,7 +3419,7 @@ class TVEpisode(TVObject):
                            (id=self.show.indexerid, location=self.location,
                             air_date=time.strftime('%b %d,%Y (%H:%M)', airdatetime)), logger.DEBUG)
                 try:
-                    if helpers.touchFile(self.location, time.mktime(airdatetime)):
+                    if helpers.touch_file(self.location, time.mktime(airdatetime)):
                         logger.log(u"{id}: Changed modify date of '{location}' to show air date {air_date}".format
                                    (id=self.show.indexerid, location=os.path.basename(self.location),
                                     air_date=time.strftime('%b %d,%Y (%H:%M)', airdatetime)))
