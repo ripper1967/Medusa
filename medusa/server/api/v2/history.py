@@ -1,7 +1,5 @@
 # coding=utf-8
 """Request handler for history."""
-import json
-
 from .base import BaseRequestHandler
 
 
